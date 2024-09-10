@@ -40,9 +40,10 @@ def main(
                 )
             )
 
-    ts_data = pd.DataFrame({"date": pd.to_datetime(dates, unit="s"), "points": points})
+    # This needs to be ds and y for Prophet to properly predict
+    ts_data = pd.DataFrame({"ds": pd.to_datetime(dates, unit="s"), "y": points})
 
-    ts_hourly = ts_data.resample('H', on=date).sum().reset_index()
+    ts_hourly = ts_data.resample('H', on="ds").sum().reset_index()
     model_hourly = Prophet()
     model_hourly.fit(ts_hourly)
     future_hourly = model_hourly.make_future_dataframe(periods=24, freq="H")
