@@ -7,8 +7,12 @@ from google.cloud.bigtable.row_set import RowSet
 import pandas as pd
 
 
-
-def main(project_id="project-id", instance_id="instance-id", table_id="my-table", family_id="my-family"):
+def main(
+    project_id="project-id",
+    instance_id="instance-id",
+    table_id="my-table",
+    family_id="my-family",
+):
     dates = []
     points = []
     # Create a Cloud Bigtable client.
@@ -20,20 +24,22 @@ def main(project_id="project-id", instance_id="instance-id", table_id="my-table"
     # Open an existing table.
     table = instance.table(table_id)
 
-    #row_key = "10.0.0.99#1725027060"
-    #row = table.read_row(row_key.encode("utf-8"))
     row_set = RowSet()
     row_set.add_row_range_from_keys(
-        start_key=b"10.0.0.99#0",
-        end_key=b"10.0.0.99#99999999999999"
+        start_key=b"10.0.0.99#0", end_key=b"10.0.0.99#99999999999999"
     )
 
     rows = table.read_rows(row_set=row_set)
     for row in rows:
         if row is not None:
-            dates.append( row.row_key.decode("utf-8").split("#")[1] )
-            points.append( int.from_bytes(row.cells[family_id]['ips'.encode("utf-8")][0].value, 'big'))
-    ts_data = pd.DataFrame({"date": dates, "points": points})
+            dates.append(row.row_key.decode("utf-8").split("#")[1])
+            points.append(
+                int.from_bytes(
+                    row.cells[family_id]["ips".encode("utf-8")][0].value, "big"
+                )
+            )
+
+    ts_data = pd.DataFrame({"date": pd.to_datetime(dates, unit="s"), "points": points})
     print(ts_data)
 
 
@@ -43,7 +49,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--project_id", "-p", help="GCP project ID.", required=True)
     parser.add_argument(
-        "--instance_id", help="Cloud Bigtable instance to connect to.",  default="timeseries"
+        "--instance_id",
+        help="Cloud Bigtable instance to connect to.",
+        default="timeseries",
     )
     parser.add_argument(
         "--table", help="Cloud Bigtable table to read from.", default="metrics"
