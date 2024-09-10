@@ -5,6 +5,7 @@ import argparse
 from google.cloud import bigtable
 from google.cloud.bigtable.row_set import RowSet
 import pandas as pd
+from prophet import Prophet
 
 
 def main(
@@ -40,7 +41,14 @@ def main(
             )
 
     ts_data = pd.DataFrame({"date": pd.to_datetime(dates, unit="s"), "points": points})
-    print(ts_data)
+
+    ts_hourly = ts_data.resample('H', on=date).sum().reset_index()
+    model_hourly = Prophet()
+    model_hourly.fit(ts_hourly)
+    future_hourly = model_hourly.make_future_dataframe(periods=24, freq="H")
+    forecast_hourly = model_hourly.predict(future_hourly)
+    print(forecast_hourly)
+    
 
 
 if __name__ == "__main__":
