@@ -1,2 +1,3 @@
 google-cloud-bigtable
 pandas
+prophet
