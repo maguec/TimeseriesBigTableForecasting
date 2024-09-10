@@ -22,15 +22,16 @@ type Data struct {
 var ctx = context.Background()
 
 var args struct {
-	Project  string `help:"GCP Project to use" default:"" arg:"--project, -p, env:BT_PROJECT"`
-	Instance string `help:"BT Instance to use" default:"timeseries" arg:"--instance, -i, env:BT_INSTANCE"`
-	Database string `help:"BT Database to use" default:"metrics" arg:"--database, -d, env:BT_DATABSE"`
-	Table    string `help:"BT Table to use" default:"stats" arg:"--table, -t, env:BT_TABLE"`
-	RPS      int    `help:"Number of updates per second " default:"1000" arg:"--rps, -r, env:BT_RPS"`
-	Records  int    `help:"Toal Number of records to write" default:"10000" arg:"--records, -w, env:BT_RECORDS"`
-	Threads  int    `help:"Number of threads to concurrent write" default:"30" arg:"--threads, -z, env:BT_THREADS"`
-	Verbose  bool   `help:"Show verbose output" default:"false" arg:"--verbose, -v, env:BT_VERBOSE"`
-	Cidr     string `help:"CIDR to use" default:"10.0.0.0/8" arg:"--cidr, -c, env:BT_CIDR"`
+	Project    string `help:"GCP Project to use" default:"" arg:"--project, -p, env:BT_PROJECT"`
+	Instance   string `help:"BT Instance to use" default:"timeseries" arg:"--instance, -i, env:BT_INSTANCE"`
+	Database   string `help:"BT Database to use" default:"metrics" arg:"--database, -d, env:BT_DATABSE"`
+	Table      string `help:"BT Table to use" default:"stats" arg:"--table, -t, env:BT_TABLE"`
+	RPS        int    `help:"Number of updates per second " default:"5000" arg:"--rps, -r, env:BT_RPS"`
+	TimeBucket int    `help:"Rollup time in seconds " default:"60" arg:"--time-bucket, -b, env:BT_TIME_BUCKET"`
+	Records    int    `help:"Toal Number of records to write" default:"100000" arg:"--records, -w, env:BT_RECORDS"`
+	Threads    int    `help:"Number of threads to concurrent write" default:"100" arg:"--threads, -z, env:BT_THREADS"`
+	Verbose    bool   `help:"Show verbose output" default:"false" arg:"--verbose, -v, env:BT_VERBOSE"`
+	Cidr       string `help:"CIDR to use" default:"10.0.0.0/24" arg:"--cidr, -c, env:BT_CIDR"`
 }
 
 func inc(ip net.IP) {
@@ -104,6 +105,7 @@ func createTable(project, instance, table, columnFamily string, debug bool) erro
 
 func writeWorker(
 	id int,
+	timeBucket int,
 	jobs <-chan Data,
 	results chan<- time.Duration,
 	rl ratelimit.Limiter,
@@ -123,9 +125,14 @@ func writeWorker(
 		rl.Take()
 		startTime := time.Now()
 		mut := bigtable.NewReadModifyWrite()
-		mut.Increment("stats", "ips", 1)
+		mut.Increment("stats", "ips", (int64(rand.Intn(10))))
 
-		if _, err := tbl.ApplyReadModifyWrite(ctx, j.Ip, mut); err != nil {
+		rowkey := fmt.Sprintf("%s#%d", j.Ip, timeBucket*int(j.Timestamp/timeBucket))
+    if verbose {
+      log.Printf("Job: %v Rowkey: %v", j, rowkey)
+    }
+
+		if _, err := tbl.ApplyReadModifyWrite(ctx, rowkey, mut); err != nil {
 			log.Fatalf("Job: %v Apply: %v Family: %v", j, err, family)
 		}
 
@@ -171,8 +178,8 @@ func main() {
 			log.Fatal(err)
 		}
 		jobs <- Data{
-			Timestamp: int(time.Now().Unix()),
-			Ip:        ip,
+			Timestamp: i+int(time.Now().Unix())-args.Records,
+      Ip:        ip,
 		}
 	}
 
@@ -182,7 +189,7 @@ func main() {
 
 	for w := 1; w <= args.Threads; w++ {
 		go writeWorker(
-			w, jobs, res, rl,
+			w, args.TimeBucket, jobs, res, rl,
 			args.Verbose, args.Project,
 			args.Instance, args.Database, args.Table)
 	}
