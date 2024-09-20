@@ -5,6 +5,8 @@ import argparse
 from google.cloud import bigtable
 from google.cloud.bigtable.row_set import RowSet
 import pandas as pd
+from prophet import Prophet
+import plotly.graph_objects as go
 
 
 def main(
@@ -39,8 +41,24 @@ def main(
                 )
             )
 
-    ts_data = pd.DataFrame({"date": pd.to_datetime(dates, unit="s"), "points": points})
-    print(ts_data)
+    # This needs to be ds and y for Prophet to properly predict
+    ts_data = pd.DataFrame({"ds": pd.to_datetime(dates, unit="s"), "y": points})
+
+    ts_hourly = ts_data.resample('h', on="ds").sum().reset_index()
+    model_hourly = Prophet()
+    model_hourly.fit(ts_hourly)
+    future_hourly = model_hourly.make_future_dataframe(periods=8, freq="h")
+    forecast_hourly = model_hourly.predict(future_hourly)
+    fig_hourly = go.Figure()
+    fig_hourly.add_trace(go.Scatter(x=ts_hourly['ds'], y=ts_hourly['y'], mode='lines', name="Actual"))
+    print(forecast_hourly)
+    fig_hourly.add_trace(go.Scatter(x=forecast_hourly['ds'], y=forecast_hourly['yhat'], mode='lines', name="Forecast"))
+    fig_hourly.add_trace(go.Scatter(x=forecast_hourly['ds'], y=forecast_hourly['yhat_upper'], mode='lines', name="Forecast Upper"))
+    fig_hourly.add_trace(go.Scatter(x=forecast_hourly['ds'], y=forecast_hourly['yhat_lower'], mode='lines', name="Forecast Lower"))
+    fig_hourly.update_layout(title="Hits by IP", xaxis_title="Date", yaxis_title="Hits")
+    fig_hourly.show()
+                         
+    
 
 
 if __name__ == "__main__":
