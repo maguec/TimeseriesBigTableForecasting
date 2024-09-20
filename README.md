@@ -8,6 +8,7 @@ This is a code sample of how to use [BigTable Counters](https://cloud.google.com
 
 ### Python 3.7+
 ### Go 1.22.2+
+### Gcloud setup
 
 ## Setup
 
@@ -29,13 +30,25 @@ go get
 
 ## Usage
 
+### Spin up BigTable
+
+```bash
+make btcreate
+```
+
 ### Write BigTable Data
 
 ```bash
-go run main.go
+go run btwrite.go  --project <PROJECT_NAME>
 ```
 ### Read BigTable Data
 
 ```bash
 ./readip.py
+```
+
+### Spin down BigTable
+
+```bash
+make btdelete
 ```
