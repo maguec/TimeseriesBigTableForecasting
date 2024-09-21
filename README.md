@@ -4,7 +4,7 @@
 
 This is a code sample of how to use [BigTable Counters](https://cloud.google.com/blog/products/databases/distributed-counting-with-bigtable) to store time series data that can scale up to extremely large scale.  It also shows an example of how to pull the data and utilize [Prophet](https://facebook.github.io/prophet/) to forecast that data.
 
-![Sample Screenshot](./images/screenshot.png)
+![screenshot](./img/sample.png)
 
 ## Prerequisites
 
